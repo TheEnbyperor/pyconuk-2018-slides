@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/night.css">
+    <link rel="stylesheet" href="lib/css/darcula.css">
+
+    <style>
+        .flex {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .flex > * {
+            flex: 1;
+        }
+
+        img {
+            margin: 15px !important;
+        }
+    </style>
+</head>
+<body>
+<div class="reveal">
+    <div class="slides">
+        <section>
+            <h2>Running (a subset) of python on the BBC Micro</h2>
+            <h3>Yes, the one from the 80's. Yes, I'm a little mad.</h3>
+            <span>Q Misell <a href="https://twitter.com/TheEnbyperor">@TheEnbyperor</a></span>
+        </section>
+        <section>
+            <h3>Last year</h3>
+            <iframe width="853" height="480" src="https://www.youtube.com/embed/FcLCHe3pjXw?rel=0" frameborder="0"
+                    allow="autoplay; encrypted-media" allowfullscreen></iframe>
+
+            <aside class="notes">
+                First some background:
+
+                Some of you may remember me from last year. Today's talk is somewhat of a continuation from that talk,
+                however last years talk in not required to understand this one.
+
+                Last year I had been working on a C compiler in python for the BBC micro and at the time it was a bit
+                of a mess and couldn't really do much. Since then I've had a year to work on it and it can actually
+                compile some useful things now. But that's not the subject of this talk so if you want to go learn about
+                that you can watch my talk at ACCU.
+            </aside>
+        </section>
+        <section>
+            <h3>Python on a Beeb?!?!?! You're joking right?</h3>
+            <div class="flex">
+                <div>
+                    <img src="img/opengraph-icon-200x200.png" alt="">
+                    <p>5.0MiB</p>
+                </div>
+                <div>
+                    <img src="img/300px-BBC_Micro_Front_Restored.jpg" alt="">
+                    <p>32KiB or 0.03125MiB (~16KiB usable)</p>
+                </div>
+            </div>
+
+            <aside class="notes">
+                Now I know what you're thinking; How can you possibly get python on a Beeb? Python 3.7 is 5MiB in size
+                and the Beeb only has 32Kib of RAM and only about half of that is usable at best. Well obviously some
+                compromises had to be made.
+            </aside>
+        </section>
+        <section>
+            <h3>MicroPython?</h3>
+            <img src="img/Micropython-logo.svg.png" alt="" width="300">
+
+            <aside class="notes">
+                Some of you might have heard of MicroPython. It's the version of python that runs on the micro:bit,
+                but there's still a problem. MicroPython takes 16KiB of RAM, brilliant! It'll fit! Well, no. It also
+                takes 256KiB of program space, so no it won't. My solution was to write my own implementation of python.
+            </aside>
+        </section>
+        <section>
+            <section>
+                <h2>How does python actually work?</h2>
+            </section>
+            <section>
+                <div class="flex">
+                    <div>
+                        <h4>Interpreted</h4>
+                        <span>BASIC</span>
+                    </div>
+                    <div>
+                        <h4>¯\_(ツ)_/¯</h4>
+                        <span>Python</span>
+                    </div>
+                    <div>
+                        <h4>Compiled</h4>
+                        <span>C</span>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <h3>Sophie Wilson</h3>
+                <div class="flex">
+                    <img src="img/Sophie_Wilson.jpg" alt="">
+                    <img src="img/trans.png" alt="">
+                </div>
+            </section>
+            <section>
+                <pre><code data-trim class="python">
+                    >>> import dis
+                    >>> dis.dis("40+2")
+                      1           0 LOAD_CONST               2 (42)
+                                  2 RETURN_VALUE
+                    >>>
+                </code></pre>
+            </section>
+
+            <aside class="notes">
+                The first step in writing an implementation of python is to learn how python works internally.
+
+                Python is a somewhat confusing language in that it is both compiled and interpreted. It's not like BASIC
+                that purely interpreted, but it's also not like C that purely compiled.
+
+                Side note: The BBC Micro and BBC Basic that runs on it were co-designed by Sophie Wilson who is trans,
+                which is awesome! She also designed the ARM chip that now powers probably every phone in this room.
+
+                Anyway, back to python. We can have a peek into the python internals with the `dis` module.
+                By calling the dis function we can see the compiled part of python. This is python bytecode, which gets
+                executed by the python virtual machine. All of the dynamic typing and fanciness of python is handled by
+                the VM so the compiler itself isn't complicated by compiler standards.
+            </aside>
+        </section>
+        <section>
+            <section>
+                <h2>The python virtual machine</h2>
+            </section>
+        </section>
+    </div>
+</div>
+<script src="js/reveal.js"></script>
+<script src="lib/js/head.min.js"></script>
+<script>
+    Reveal.initialize({
+        markdown: {
+            smartypants: true,
+        },
+        controls: false,
+        history: true,
+        dependencies: [
+            {
+                src: 'lib/js/classList.js', condition: function () {
+                    return !document.body.classList;
+                }
+            },
+            {
+                src: 'plugin/markdown/marked.js', condition: function () {
+                    return !!document.querySelector('[data-markdown]');
+                }
+            },
+            {
+                src: 'plugin/markdown/markdown.js', condition: function () {
+                    return !!document.querySelector('[data-markdown]');
+                }
+            },
+            {
+                src: 'plugin/highlight/highlight.js', async: true, callback: function () {
+                    hljs.initHighlightingOnLoad();
+                }
+            },
+            {src: 'plugin/zoom-js/zoom.js', async: true},
+            {src: 'plugin/notes/notes.js', async: true},
+            {src: 'plugin/math/math.js', async: true}
+        ]
+    });
+</script>
+</body>
+</html>
