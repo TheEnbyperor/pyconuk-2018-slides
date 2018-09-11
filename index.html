@@ -272,6 +272,62 @@
                     In C arrays are really just glorified pointers so we can just use `data` like an array.
                 </aside>
             </section>
+
+            <section>
+                <pre><code data-trim class="c stretch">
+                    void* reallocate(void* previous, size_t newSize) {
+                      if (newSize == 0) {
+                        free(previous);
+                        return NULL;
+                      }
+
+                      return realloc(previous, newSize);
+                    }
+
+                    void writeArray(DynamicArray* array, size_t elmSize,
+                                    void *value) {
+                      if (array->meta.capacity < array->meta.count + 1) {
+                        int oldCapacity = array->meta.capacity;
+                        array->meta.capacity = growCapacity(oldCapacity);
+                        array->data =
+                          reallocate(array->data, array->meta.capacity * elmSize);
+                      }
+
+                      size_t offset = array->meta.count * elmSize;
+                      for (unsigned int i = 0; i < elmSize; ++i)
+                        array->data[offset+i] = *(((uint8_t *)value)+i);
+                      array->meta.count++;
+                    }
+                </code></pre>
+
+                <aside class="notes">
+                    Now lets right the logic to deal with the dynamic array. To summarise the code it checks weather
+                    enough memory is already allocated to fit the new object in, otherwise it reallocates the array with
+                    a larger size. There is a similar function for popping off an array and making it smaller if
+                    possible and/or sensible, but that is not shown here for it being too long to fit on screen all at
+                    once
+                </aside>
+            </section>
+
+            <section>
+                <pre><code data-trim data-noescape class="bash">
+                    > python main.c memory.c
+                    <i>...</i>
+                    TypeError: realloc is not defined
+                </code></pre>
+
+                <aside class="notes">
+                    And we have a problem, no memory allocator. Of course we don't have one, where on a 37 year old
+                    platform, never designed for C. So now I have to write my own.
+                </aside>
+            </section>
+        </section>
+
+        <section>
+            <section>
+                <h3>A memory allocator</h3>
+                <a href="https://danluu.com/malloc-tutorial/">danluu.com/malloc-tutorial/</a>
+            </section>
         </section>
     </div>
 </div>
