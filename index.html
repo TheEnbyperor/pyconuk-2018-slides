@@ -213,7 +213,65 @@
         </section>
 
         <section>
+            <section>
+                <h2>Implementing a virtual machine</h2>
 
+                <aside class="notes">
+                    Now that's enough theory, time to actully run some code.
+                    This involves a lot of somewhat low-level C.
+                </aside>
+            </section>
+
+            <section>
+                <h3>Storing the bytecode</h3>
+
+                <pre><code data-trim class="c">
+                    typedef struct {
+                      uint8_t insts[8]; // Fixed size
+                    } Code;
+                </code></pre>
+                <pre><code data-trim class="c">
+                    typedef struct {
+                      uint8_t insts[]; // Invalid - incomplete type as struct member
+                    } Code;
+                </code></pre>
+
+                <aside class="notes">
+                    Now in C, due its close to the metal nature and minimal (if any) runtime we can't have variable
+                    arrays. A large fixed size array is also completely impractical due to not being able to fit
+                    large code blocks and huge memory usage compared to actual code size.
+                </aside>
+            </section>
+
+            <section>
+                <h3>Dynamic arrays</h3>
+
+                <pre><code data-trim class="c">
+                    typedef struct {
+                      unsigned int count;
+                      unsigned int capacity;
+                    } ArrayMeta;
+
+                    typedef struct {
+                      ArrayMeta meta;
+                      uint8_t* data;
+                    } DynamicArray;
+                </code></pre>
+
+                <pre><code data-trim class="c fragment">
+                    DynamicArray array;
+                    uint8_t val = array.data[3];
+                </code></pre>
+
+                <aside class="notes">
+                    So, let's define the structure of a dynamic array. We have a count and a capacity in ArrayMeta.
+                    Then there's the array itself with a byte pointer to the actual data. The reason I put ArrayMeta in
+                    a separate struct is a way of implementing generics in C, I don't have time to explain in detail
+                    so come talk to me afterwards if you want an explanation.
+
+                    In C arrays are really just glorified pointers so we can just use `data` like an array.
+                </aside>
+            </section>
         </section>
     </div>
 </div>
