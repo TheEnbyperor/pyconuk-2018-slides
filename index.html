@@ -79,6 +79,10 @@
         <section>
             <section>
                 <h2>How does python actually work?</h2>
+
+                <aside class="notes">
+                    The first step in writing an implementation of python is to learn how python works internally.
+                </aside>
             </section>
             <section>
                 <div class="flex">
@@ -95,43 +99,121 @@
                         <span>C</span>
                     </div>
                 </div>
+
+                <aside class="notes">
+                    Python is a somewhat confusing language in that it is both compiled and interpreted. It's not like
+                    BASIC
+                    that purely interpreted, but it's also not like C that purely compiled.
+                </aside>
             </section>
             <section>
                 <h3>Sophie Wilson</h3>
                 <div class="flex">
                     <img src="img/Sophie_Wilson.jpg" alt="">
-                    <img src="img/trans.png" alt="">
+                    <img class="fragment" src="img/trans.png" alt="">
                 </div>
+
+                <aside class="notes">
+                    Side note: The BBC Micro and BBC Basic that runs on it were co-designed by Sophie Wilson who is
+                    trans,
+                    which is awesome! She also designed the ARM chip that now powers probably every phone in this room.
+                </aside>
             </section>
             <section>
                 <pre><code data-trim class="python">
                     >>> import dis
                     >>> dis.dis("40+2")
-                      1           0 LOAD_CONST               2 (42)
-                                  2 RETURN_VALUE
+                      1           0 LOAD_CONST               0 (40)
+                                  2 LOAD_CONST               1 (2)
+                                  4 BINARY_ADD
+                                  6 RETURN_VALUE
                     >>>
                 </code></pre>
+
+                <aside class="notes">
+                    Anyway, back to python. We can have a peek into the python internals with the `dis` module.
+                    By calling the dis function we can see the compiled part of python. This is python bytecode, which
+                    gets executed by the python virtual machine. All of the dynamic typing and fanciness of python is
+                    handled by the VM so the compiler itself isn't complicated by compiler standards.
+                </aside>
             </section>
-
-            <aside class="notes">
-                The first step in writing an implementation of python is to learn how python works internally.
-
-                Python is a somewhat confusing language in that it is both compiled and interpreted. It's not like BASIC
-                that purely interpreted, but it's also not like C that purely compiled.
-
-                Side note: The BBC Micro and BBC Basic that runs on it were co-designed by Sophie Wilson who is trans,
-                which is awesome! She also designed the ARM chip that now powers probably every phone in this room.
-
-                Anyway, back to python. We can have a peek into the python internals with the `dis` module.
-                By calling the dis function we can see the compiled part of python. This is python bytecode, which gets
-                executed by the python virtual machine. All of the dynamic typing and fanciness of python is handled by
-                the VM so the compiler itself isn't complicated by compiler standards.
-            </aside>
         </section>
         <section>
             <section>
                 <h2>The python virtual machine</h2>
+
+                <aside class="notes">
+                    Now we have an idea of how python works lets try and implement a byetcode virtual machine.
+                </aside>
             </section>
+
+            <section>
+                <h3>Internal representation</h3>
+
+                <pre><code data-trim class="python">
+                    >>> import dis
+                    >>> code = compile("40+2", '', 'eval')
+                    >>> list(code.co_code)
+                    [100, 0, 100, 1, 23, 0, 83, 0]
+                    >>> code.co_consts
+                    (40, 2)
+                    >>> dis.dis(code)
+                      1           0 LOAD_CONST               0 (40)
+                                  2 LOAD_CONST               1 (2)
+                                  4 BINARY_ADD
+                                  6 RETURN_VALUE
+                    >>>
+                </code></pre>
+
+                <aside class="notes">
+                    The data isn't stored in the VM as it is displayed by the dis module. We can see its internal
+                    representation using the built in `compile` function. This generates a code object that the VM would
+                    then use to run the program.
+
+                    The `co_code` attribute of the object shows us the byte representation of the code. Bytecode is
+                    really like assembly language, but for a generic portable architecture. Each instruction is 1 byte
+                    long and usually takes 1 byte as an argument.
+
+                    We can see that `LOAD_CONST` has a value of 100, with an argument of 0. That 0 is an index into an
+                    array of constants stored next the bytecode, referencing 40. Then we see it again with an argument
+                    of 1 referencing 2.
+
+                    Next is 23 which is `BINARY_ADD`, with an argument of 0. I actually don't know why that would ever
+                    be anything other than 0 so why is it there? I could probably find out after a few days of looking
+                    at the source code. This will take the two values and add them together.
+
+                    Next is 83 which is `RETURN_VALUE`, which in this case gives the value back to the REPL to print.
+                </aside>
+            </section>
+
+            <section>
+                <h3>The virtual machine stack</h3>
+
+                <div data-markdown>
+                    |   Instruction   | Stack |   |
+                    |:---------------:|:-----:|:-:|
+                    |     *START*     |       |   |
+                    | LOAD_CONST (40) |  40   |   |
+                    | LOAD_CONST (2)  |  40   | 2 |
+                    |   BINARY_ADD    |  42   |   |
+                    |  RETURN_VALUE   |       |   |
+                </div>
+
+                <aside class="notes">
+                    Now you might be wondering how the values 40 and 2 got from `LOAD_CONST` to `BINARY_ADD` and then 42
+                    to `RETURN_VALUE`. The answer is the python stack. A stack is a fundamental data structure in
+                    computing. A stack is a LIFO buffer, in that the last item pushed is the first item popped.
+
+                    The python virtual machine is stack based, in that all instruction make modifications to the stack.
+                    So the two `LOAD_CONST` put their respective constant values on the stack, the `BINARY_ADD` pops
+                    the two values off the top and puts the result back on the stack. Finally `RETURN_VALUE` pops the
+                    value on the top of the stack into function that called this code, in this case the REPL.
+                </aside>
+            </section>
+        </section>
+
+        <section>
+
         </section>
     </div>
 </div>
