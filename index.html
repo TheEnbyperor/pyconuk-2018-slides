@@ -301,23 +301,25 @@
                 </code></pre>
 
                 <aside class="notes">
-                    Now lets right the logic to deal with the dynamic array. To summarise the code it checks weather
-                    enough memory is already allocated to fit the new object in, otherwise it reallocates the array with
-                    a larger size. There is a similar function for popping off an array and making it smaller if
+                    Now lets get right to the logic to deal with the dynamic array. To summarise the code it checks
+                    weather enough memory is already allocated to fit the new object in, otherwise it reallocates the
+                    array with a larger size. There is a similar function for popping off an array and making it smaller if
                     possible and/or sensible, but that is not shown here for it being too long to fit on screen all at
-                    once
+                    once.
                 </aside>
             </section>
 
             <section>
                 <pre><code data-trim data-noescape class="bash">
                     > python main.c memory.c
-                    <i>...</i>
+                    <div class="fragment"><i>...</i>
                     TypeError: realloc is not defined
+                    </div>
                 </code></pre>
 
                 <aside class="notes">
-                    And we have a problem, no memory allocator. Of course we don't have one, where on a 37 year old
+                    So let's just go compile that.
+                    Ah, we have a problem, no memory allocator. Of course we don't have one, where on a 37 year old
                     platform, never designed for C. So now I have to write my own.
                 </aside>
             </section>
@@ -327,6 +329,103 @@
             <section>
                 <h3>A memory allocator</h3>
                 <a href="https://danluu.com/malloc-tutorial/">danluu.com/malloc-tutorial/</a>
+                <img src="img/Screenshot_2018-09-11%20Malloc%20tutorial.png" alt="">
+
+                <aside class="notes">
+                    I now had to actually figure out how memory allocators work. Turns out there's quite a bit of magic
+                    that happens in them, way more that I could've understood from reading glibc's source code. Their
+                    malloc is 5611 lines long last time I checked, in comparison mine is 169 lines long. Mine has a
+                    significantly simpler algorithm (simple first-fit as opposed to a complicated mix of mmap, first-fit
+                    and best fit), and also can hand out memory as it wishes without having to interface to the OS
+                    (because there is none).
+                </aside>
+            </section>
+
+            <section>
+                <img src="img/giphy.gif" alt="">
+
+                <aside class="notes">
+                    So what does a memory allocator actually do? When a program starts it has all of system memory
+                    available to it, but has no idea what to do with it. Wheres this string going to be stored, what
+                    about that class, that cat gif? It's a memory allocators job to (efficiently) find space to store
+                    objects in memory.
+
+                    This is why in C you have to be very explicit about variables and memory, because there's nothing to
+                    manage it at runtime.
+                </aside>
+            </section>
+        </section>
+
+        <section>
+            <section>
+                <h2>Running the VM code</h2>
+            </section>
+
+            <section>
+                From: Python/ceval.c
+                <pre><code data-trim class="c stretch">
+                    switch (opcode) {
+                        TARGET(NOP)
+                            FAST_DISPATCH();
+
+                        TARGET(LOAD_FAST) {
+                            PyObject *value = GETLOCAL(oparg);
+                            if (value == NULL) {
+                                ...
+                                goto error;
+                            }
+                            Py_INCREF(value);
+                            PUSH(value);
+                            FAST_DISPATCH();
+                        }
+
+                        PREDICTED(LOAD_CONST);
+                        TARGET(LOAD_CONST) {
+                            PyObject *value = GETITEM(consts, oparg);
+                            Py_INCREF(value);
+                            PUSH(value);
+                            FAST_DISPATCH();
+                    ...
+                </code></pre>
+
+                <aside class="notes">
+                    Skipping ahead a little, we now have a dynamic array with VM opcode bytes in it, but how is that
+                    interpreted. If we look at the cpython source code (available on github) we can see that it's
+                    nothing more than a giant (and I mean giant, a couple thousand lines at least) switch statement.
+                </aside>
+            </section>
+
+            <section>
+                <pre><code data-trim class="c stretch">
+                    uint8_t instruction = readByte(vm);
+
+                    if (instruction == OP_CONSTANT) {
+                        struct Value *constant = readConstant(vm);
+                        pushStack(&vm->stack, constant);
+                    } else if (instruction == OP_NEGATE) {
+                        valuePtr = peek(vm, 0);
+                        if (!isInt(valuePtr)) {
+                            runtimeError(vm, "Operand must be a number.");
+                            return INTERPRET_RUNTIME_ERROR;
+                        }
+                        intVal(-asInt(valuePtr), valuePtr);
+                    } else if (instruction == OP_ADD) {
+                        if (isString(peek(vm, 0)) && isString(peek(vm, 1))) {
+                            concatenate(vm);
+                        } else if (isInt(peek(vm, 0)) && isInt(peek(vm, 1))) {
+                            valuePtr = peek(vm, 1);
+                            popStack(&vm->stack, &value);
+                            a = asInt(valuePtr);
+                            b = asInt(&value);
+                            intVal(a + b, valuePtr);
+                    ...
+                </code></pre>
+
+                <aside class="notes">
+                    If we now have a look at my code, we can see the logic is very similar. Read a byte, figure out
+                    the instruction and execute it. Some of you may have noticed this is an if instead of a switch,
+                    the only reason being that my C compiler doesn't support switch statements yet.
+                </aside>
             </section>
         </section>
     </div>
