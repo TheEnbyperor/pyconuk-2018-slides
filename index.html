@@ -15,6 +15,8 @@
 
         .flex > * {
             flex: 1;
+            justify-content: space-evenly;
+            height: 100%;
         }
 
         img {
@@ -190,13 +192,13 @@
                 <h3>The virtual machine stack</h3>
 
                 <div data-markdown>
-                    |   Instruction   | Stack |   |
+                    | Instruction | Stack | |
                     |:---------------:|:-----:|:-:|
-                    |     *START*     |       |   |
-                    | LOAD_CONST (40) |  40   |   |
-                    | LOAD_CONST (2)  |  40   | 2 |
-                    |   BINARY_ADD    |  42   |   |
-                    |  RETURN_VALUE   |       |   |
+                    | *START* | | |
+                    | LOAD_CONST (40) | 40 | |
+                    | LOAD_CONST (2) | 40 | 2 |
+                    | BINARY_ADD | 42 | |
+                    | RETURN_VALUE | | |
                 </div>
 
                 <aside class="notes">
@@ -303,7 +305,8 @@
                 <aside class="notes">
                     Now lets get right to the logic to deal with the dynamic array. To summarise the code it checks
                     weather enough memory is already allocated to fit the new object in, otherwise it reallocates the
-                    array with a larger size. There is a similar function for popping off an array and making it smaller if
+                    array with a larger size. There is a similar function for popping off an array and making it smaller
+                    if
                     possible and/or sensible, but that is not shown here for it being too long to fit on screen all at
                     once.
                 </aside>
@@ -425,8 +428,181 @@
                     If we now have a look at my code, we can see the logic is very similar. Read a byte, figure out
                     the instruction and execute it. Some of you may have noticed this is an if instead of a switch,
                     the only reason being that my C compiler doesn't support switch statements yet.
+
+                    What some of you may have noticed already is that I haven't discussed how python's dynamic typing
+                    works. You'll notice that in the OP_NEGATE and OP_ADD calls are made to to isInt and isString.
+                    These are what decode the bytes in the Value object and figure out what type it is. The function
+                    asInt then converts it to a C integer for arithmetic operations.
                 </aside>
             </section>
+        </section>
+
+        <section>
+            <section>
+                <h3>Dynamic typing with tagged unions</h3>
+
+                <pre><code data-trim class="c">
+                    typedef uint8_t ValueType;
+                    #define VAL_NONE 0
+                    #define VAL_INT 1
+                    #define VAL_BOOL 2
+                    #define VAL_OBJ 3
+
+                    typedef struct {
+                        ValueType type;
+                        union {
+                            bool boolean;
+                            int number;
+                            struct Obj *obj;
+                        } as;
+                    } Value;
+                </code></pre>
+
+                <aside class="notes">
+                    To facilitate dynamic typing I used a (under-loved IMO) piece of the C language called unions.
+                    Unlike structs which put their values sequentially in memory, unions put them all in the same place,
+                    overlapping. Now you may be thinking "How could that possibly not cause disaster?", but they're very
+                    useful sometimes - like now.
+
+                    So we have a struct with the value type (again, don't judge; my compiler doesn't support unions),
+                    and a union of all possible types. I only store the simplest of types in here because adding more
+                    increases the size of everything, and thus the memory usage.
+                </aside>
+            </section>
+
+            <section>
+                <h3>Variable length objects</h3>
+
+                <pre><code data-trim class="c">
+                    struct sObj {
+                        ObjType type;
+                        Obj* next;
+                    };
+
+                    typedef struct {
+                        struct sObj object;
+                        int length;
+                        char *chars;
+                    } ObjString;
+                </code></pre>
+
+                <aside class="notes">
+                    "What about things other than booleans and integers?" I hear you ask. Well, in the Value struct
+                    there is a type called VAL_OBJ with a pointer to a Obj struct. This struct is allocated in memory
+                    to the exact length needed.
+
+                    You'll also notice another dynamic array there for strings, which is just a wrapper around normal
+                    C strings, allocated dynamically instead of by the compiler.
+                </aside>
+            </section>
+        </section>
+
+        <section>
+            <h3>Side note: Not enough memory</h3>
+            <div class="flex" style="height: 400px">
+                <div>
+                    <img src="img/IMG_20180830_110010.jpg" alt="">
+                </div>
+                <div>
+                    <img src="img/IMG_20180830_105952.jpg" alt="">
+                </div>
+            </div>
+
+            <aside class="notes">
+                It is at this point in my development process that I started to run out of memory in the Beeb, so what
+                was one to do? The answer; add more memory. The BBC Micro has the CPU bus directly exposed at the bottom
+                and two pages of memory set aside for it, one specifically for paged external memory. So a few days of
+                soldering later I had an extra 512KiB of memory, with a 24-bit bus in case I want more in future.
+
+                Oh and the 6502 can't execute code from there so I also wrote a 32-bit x86-like virtual machine in 6502
+                assembly (by hand) to reduce the output code size of the C programs and to utilise the external memory.
+                I would talk in more detail about it but it's pretty boring and I don't have enough time. If anyone
+                want's to discuss it afterwards they're more than welcome.
+            </aside>
+        </section>
+
+        <section>
+            <section>
+                <h2>Parsing python to the bytecode</h2>
+
+                <aside class="notes">
+                    So we have this fancy bytecode virtual machine, but it's hardly python to manually write machine
+                    code, so we somehow need to parse our nice python into the VM bytecode. For those of you who saw my
+                    talk last year this section will be familiar.
+                </aside>
+            </section>
+
+            <section>
+                <h3>A lexer</h3>
+
+                <pre><code data-trim class="c">
+                    typedef struct {
+                      TokenType type;
+                      const char* start;
+                      int length;
+                      int line;
+                    } Token;
+                </code></pre>
+
+                <div class="flex">
+                    <div>
+                        <pre><code data-trim class="python">
+                            40 + 2
+                        </code></pre>
+                    </div>
+                    <div>
+                        <div data-markdown>
+                            |  Token type  | Value |
+                            |:------------:|:-----:|
+                            | TOKEN_NUMBER |   40  |
+                            |  TOKEN_PLUS  |   +   |
+                            | TOKEN_NUMBER |   2   |
+                        </div>
+                    </div>
+                </div>
+
+                <aside class="notes">
+                    The first step is to turn the string input into a series of tokens. This isn't particularly hard
+                    and is again a giant switch statment and state machine. For example: when it sees a number it keeps
+                    reading until a non number character is found then outputs a number token.
+                </aside>
+            </section>
+
+            <section>
+                <h3>A Pratt parser</h3>
+                <div class="flex">
+                    <div>
+                        <img src="img/parser.png" alt="">
+                    </div>
+                    <div>
+                        <pre><code data-trim class="c">
+                            typedef struct {
+                              ParseFunc prefix;
+                              ParseFunc suffix;
+                              Precedence precedence;
+                            } ParseRule;
+                            struct ParseRule rules[61];
+                        </code></pre>
+                    </div>
+                </div>
+                Image credit: Bob Nystrom (<a href="http://craftinginterpreters.com">craftinginterpreters.com</a>)
+
+                <aside class="notes">
+                    Now that we have a stream of tokens, we need to turn them into bytecode. For this we need a parser,
+                    this time instead of a recursive decent parser that I used in my C compiler, I've used a type of
+                    parser I learnt from crafting interpreters called a Pratt parser (named after Vaughan Pratt). It
+                    uses a lookup table of token types to find a function that then generates the bytecode.
+
+                    This part is nothing like the cpython compiler, as it generates a AST, then optimises it, then
+                    outputs bytecode.
+                </aside>
+            </section>
+        </section>
+
+        <section>
+            <h1>Thank you</h1>
+            <h2>Any questions?</h2>
+            <span>Q Misell <a href="https://twitter.com/TheEnbyperor">@TheEnbyperor</a></span>
         </section>
     </div>
 </div>
